@@ -39,14 +39,16 @@ const uploadLimiter = rateLimit({
 app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal'])
 app.use(cors());
 const options = {
-  key: fs.readFileSync('private_key'), // Replace with the path to your private key file
-  cert: fs.readFileSync('fullchain'), // Replace with the path to your certificate file
+  key: fs.readFileSync('/etc/letsencrypt/live/api.discreetshare.com/privkey.pem'), // Replace with the path to your private key file
+  cert: fs.readFileSync('/etc/letsencrypt/live/api.discreetshare.com/fullchain.pem'), // Replace with the path to your certificate file
 };
 
 const server = https.createServer(options, app);
 const storage = multer.memoryStorage();
 const upload = multer({storage});
-
+const BannedHash = mongoose.model('BannedHash', new mongoose.Schema({
+    hash: String,
+}));
 
 const fileSchema = new mongoose.Schema({
     originalName: String,
@@ -93,8 +95,6 @@ function decryptAndDecompress(data, encryptionKey, iv) {
 
 
 
-
-
 app.get('/download/:fileId', async (req, res) => {
     const fileId = req.params.fileId;
 
@@ -122,8 +122,8 @@ app.get('/download/:fileId', async (req, res) => {
     }
 });
 
-const contentLengthValidator = require('express-content-length-validator');
 
+const contentLengthValidator = require('express-content-length-validator');
 
 app.post('/upload', contentLengthValidator.validateMax({
     max: 1 * 1024 * 1024 * 1024, // 1GB limit
@@ -147,12 +147,19 @@ app.post('/upload', contentLengthValidator.validateMax({
             return res.status(400).json({ error: 'File size exceeds the limit. Size limit is 1GB per file', status: 'size' });
         }
 
+        // Check if the file's hash is in the banned hashes collection
+        const isBanned = await BannedHash.findOne({ hash: fileHash });
+// You need to manually add the banned hash to the database!
+if (isBanned) {
+    return res.status(410).json({ error: 'This file is banned', status: 'hb-410' });
+}
+
         // Check if the file with the same hash already exists in the database
         const existingFile = await File.findOne({ fileHash });
 
         if (existingFile) {
             const downloadLink = `https://api.discreetshare.com/download/${existingFile._id}`;
-          
+            // Free up memory
             req.file = null;
             return res.status(200).json({ message: 'File already exists', downloadLink, status: 'true' });
         }
@@ -170,14 +177,14 @@ app.post('/upload', contentLengthValidator.validateMax({
             fileHash,
         });
 
-    
+        // Save the file to disk
         const uploadFilePath = path.join(__dirname, 'uploads', randomFileName);
         fs.writeFileSync(uploadFilePath, encrypted);
 
-  
+        // Free up memory
         req.file = null;
 
-    
+        // Save file details to the database
         await file.save();
 
         const downloadLink = `https://api.discreetshare.com/download/${file._id}`;
@@ -189,10 +196,7 @@ app.post('/upload', contentLengthValidator.validateMax({
 });
 
 
-
-
-
-app.get('/info/:fileId', async (req, res) => { // <-- Add 'async' here
+app.get('/info/:fileId', async (req, res) => { 
     const fileId = req.params.fileId;
 
     try {
@@ -216,7 +220,7 @@ app.get('/info/:fileId', async (req, res) => { // <-- Add 'async' here
     }
 });
 
-// Exempter
+
 
 const exemptedIPs = ['204.48.92.183'];
 
@@ -226,10 +230,10 @@ const applyLimiters = (req, res, next) => {
     const clientIP = req.ip;
     console.log(`Client IP: ${clientIP}`);
     if (exemptedIPs.includes(req.ip)) {
-        // If the IP is in the exempted list, skip rate limiting
+        
         next();
     } else {
-        // Apply rate limiting to all other IP addresses
+        
         rateLimiter(req, res, () => {});
         downloadLimiter(req, res, () => {});
         uploadLimiter(req, res, () => {});
