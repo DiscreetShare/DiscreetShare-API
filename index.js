@@ -3,14 +3,14 @@ const multer = require('multer');
 const crypto = require('crypto');
 const zlib = require('zlib');
 const fs = require('fs');
-
+const mime = require('mime-types');
 const path = require('path');
 const mongoose = require('mongoose');
 const https = require('https');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const sha256File = require('sha256-file');
-mongoose.connect('YOUR_MONGODB', {
+mongoose.connect('Your_Mongodb', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -195,6 +195,52 @@ if (isBanned) {
     }
 });
 
+app.get('/cdn/:fileId', async (req, res) => {
+    const fileId = req.params.fileId.trim();
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(fileId)) {
+        return res.status(400).send('Invalid file ID format');
+    }
+
+    try {
+        // Look up the file in the database using the validated ObjectId
+        const file = await File.findById(fileId);
+
+        if (!file) {
+            return res.status(404).send('File not found');
+        }
+
+        // Construct the path to the encrypted file on disk
+        const filePath = path.join(__dirname, 'uploads', file.encryptedFileName);
+
+        // Check if the file exists on disk
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).send('File not found on disk');
+        }
+
+        // Decrypt and decompress the file data for streaming
+        const encryptedData = fs.readFileSync(filePath);
+        const decryptedAndDecompressed = decryptAndDecompress(encryptedData, file.encryptionKey, file.iv);
+
+        // Determine the MIME type from the original file extension
+        const mimeType = mime.lookup(file.extension);
+
+        // Check if the MIME type is of an image
+        if (mimeType && mimeType.startsWith('image/')) {
+            // Set the Content-Type for the response
+            res.setHeader('Content-Type', mimeType);
+
+            // Stream the decrypted and decompressed image data to the client
+            res.send(decryptedAndDecompressed);
+        } else {
+            res.status(400).send('Requested file is not an image');
+        }
+    } catch (error) {
+        console.error('Error retrieving file:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 app.get('/info/:fileId', async (req, res) => { 
     const fileId = req.params.fileId;
