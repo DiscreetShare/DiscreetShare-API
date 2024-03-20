@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 const https = require('https');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
-mongoose.connect('<yourlink>', {
+mongoose.connect('Mongodb', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -18,7 +18,7 @@ const app = express();
 const PORT = 443;
 const rateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour window
-  max: 250, // Limit each IP to 250 requests per hour
+  max: 250, // Limit each IP to 100 requests per hour
   message: 'Too many requests from this IP, please try again later.'
 });
 
