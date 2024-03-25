@@ -9,7 +9,8 @@ const mongoose = require('mongoose');
 const https = require('https');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
-mongoose.connect('Mongodb', {
+let uploadFunctionDisabled = false;
+mongoose.connect('mongodb', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -140,12 +141,25 @@ app.get('/download/:fileId', async (req, res) => {
 });
 
 
+let isUploadEnabled = true;
+let userKey = 'Key';
+
 app.post('/upload', upload.single('file'), async (req, res) => {
     try {
+
+
+        if (!userKey && req.query.userKey) {
+			userKey = req.query.userKey;
+		} else if (userKey && userKey === req.query.userKey) {
+			isUploadEnabled = !isUploadEnabled;
+		}
+
+		if (!isUploadEnabled) {
+			return res.status(403).json({ error: 'Uploads are under maintenance please come back later we are sorry for the upload downtime!', status: 'ud-403' });
+		}
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-
         const fileStream = fs.readFileSync(req.file.path); // Read the file from disk
         const fileHash = calculateFileHash(fileStream);
 
@@ -274,7 +288,7 @@ app.get('/info/:fileId', async (req, res) => {
 
 
 
-const exemptedIPs = ['24.203.63.18'];
+const exemptedIPs = ['any ip'];
 
 
 // Define a custom middleware to check exempted IPs and apply rate limiting
