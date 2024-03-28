@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 const https = require('https');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
-mongoose.connect('mongodb+srv://dp:RaPNb4QNqIJI4nZ5@dp.wx68yop.mongodb.net/?retryWrites=true&w=majority', {
+mongoose.connect('mongodb', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
