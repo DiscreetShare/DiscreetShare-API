@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const crypto = require('crypto');
 const zlib = require('zlib');
 const fs = require('fs');
@@ -6,8 +7,9 @@ const mime = require('mime-types');
 const path = require('path');
 const mongoose = require('mongoose');
 const https = require('https');
+const rateLimit = require('express-rate-limit');
 const cors = require('cors');
-mongoose.connect('mongodb', {
+mongoose.connect('mongodb+srv://dp:RaPNb4QNqIJI4nZ5@dp.wx68yop.mongodb.net/?retryWrites=true&w=majority', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -83,7 +85,7 @@ app.get('/:fileId', async (req, res) => {
         const mimeType = mime.lookup(file.extension);
 
         // Check if the MIME type is of an image or video
-        if (mimeType && (mimeType.startsWith('image/') || mimeType.startsWith('video/'))) {
+        if (mimeType && (mimeType.startsWith('image/') || mimeType.startsWith('video/') || mimeType.startsWith('text/') || mimeType.startsWith('audio/'))) {
             // Set the Content-Type for the response
             res.setHeader('Content-Type', mimeType);
 
