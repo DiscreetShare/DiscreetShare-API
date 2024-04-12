@@ -10,7 +10,7 @@ const https = require('https');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 let uploadFunctionDisabled = false;
-mongoose.connect('mongodb', {
+mongoose.connect(mongodbhere, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -106,7 +106,10 @@ app.get('/download/:fileId', async (req, res) => {
 
     try {
         const file = await File.findById(fileId);
-
+        const bannedHash = await BannedHash.findOne({ hash: file.fileHash });
+        if (bannedHash) {
+            return res.status(403).send('File is banned from the service due to non-compliance with legal regulations');
+        }
         if (!file) {
             return res.status(404).json({ error: 'File not found' });
         }
@@ -142,7 +145,7 @@ app.get('/download/:fileId', async (req, res) => {
 
 
 let isUploadEnabled = true;
-let userKey = 'Key';
+let userKey = 'ikJsy9oo0kUG3d4LBjuF0WYxS0OOOUsR3A1Y1Z4ZMfesslLptD';
 
 app.post('/upload', upload.single('file'), async (req, res) => {
     try {
@@ -205,60 +208,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 app.get('/cdn/:fileId', async (req, res) => {
-    const fileId = req.params.fileId.trim();
-
-    // Validate ObjectId
-    if (!mongoose.Types.ObjectId.isValid(fileId)) {
-        return res.status(400).send('Invalid file ID format');
-    }
-
-    try {
-        // Look up the file in the database using the validated ObjectId
-        const file = await File.findById(fileId);
-
-        if (!file) {
-            return res.status(404).send('File not found');
-        }
-
-        // Construct the path to the encrypted file on disk
-        const filePath = path.join(__dirname, 'uploads', file.encryptedFileName);
-
-        // Check if the file exists on disk
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).send('File not found on disk');
-        }
-
-        // Initialize decryption stream
-        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(file.encryptionKey, 'hex'), Buffer.from(file.iv, 'hex'));
-
-        // Initialize decompression stream
-        const decompress = zlib.createGunzip();
-
-        // Determine the MIME type from the original file extension
-        const mimeType = mime.lookup(file.extension);
-
-        // Check if the MIME type is of an image or video
-        if (mimeType && (mimeType.startsWith('image/') || mimeType.startsWith('video/'))) {
-            // Set the Content-Type for the response
-            res.setHeader('Content-Type', mimeType);
-
-            // Stream the encrypted file, decrypt it, decompress it, and send it to the client
-            fs.createReadStream(filePath)
-              .pipe(decipher) // Decrypt
-              .pipe(decompress) // Decompress
-              .on('error', (err) => {
-                  // Handle errors, such as incorrect decryption key or corrupted file
-                  console.error('Error processing file:', err);
-                  res.status(500).send('Error processing file');
-              })
-              .pipe(res); // Stream the decrypted and decompressed data to the client
-        } else {
-            res.status(400).send('Requested file is not an image or video');
-        }
-    } catch (error) {
-        console.error('Error retrieving file:', error);
-        res.status(500).send('Internal Server Error');
-    }
+    res.status(301).send('/cdn/ does not work anymore please use the new domain : cdn.discreetshare.com/:fileid')
+    
 });
 
 
@@ -288,7 +239,7 @@ app.get('/info/:fileId', async (req, res) => {
 
 
 
-const exemptedIPs = ['any ip'];
+const exemptedIPs = ['24.203.63.18'];
 
 
 // Define a custom middleware to check exempted IPs and apply rate limiting
