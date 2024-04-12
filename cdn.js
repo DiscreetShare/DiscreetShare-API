@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 const https = require('https');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
-mongoose.connect('mongodb+srv://dp:RaPNb4QNqIJI4nZ5@dp.wx68yop.mongodb.net/?retryWrites=true&w=majority', {
+mongoose.connect(mongodbhere, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -62,15 +62,15 @@ app.get('/:fileId', async (req, res) => {
     try {
         // Look up the file in the database using the validated ObjectId
         const file = await File.findById(fileId);
-
-        if (!file) {
-            return res.status(404).send('File not found');
-        }
-
         const bannedHash = await BannedHash.findOne({ hash: file.fileHash });
         if (bannedHash) {
             return res.status(403).send('File is banned from the service due to non-compliance with legal regulations');
         }
+        if (!file) {
+            return res.status(404).send('File not found');
+        }
+
+
         
         // Construct the path to the encrypted file on disk
         const filePath = path.join(__dirname, 'uploads', file.encryptedFileName);
