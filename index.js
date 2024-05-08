@@ -10,7 +10,7 @@ const https = require('https');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 let uploadFunctionDisabled = false;
-mongoose.connect(mongodbhere, {
+mongoose.connect('mongodb', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -39,14 +39,14 @@ const uploadLimiter = rateLimit({
 app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal'])
 app.use(cors());
 const options = {
-  key: fs.readFileSync('/etc/letsencrypt/live/api.discreetshare.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/api.discreetshare.com/fullchain.pem'),
+  key: fs.readFileSync('/etc/letsencrypt/live/api.discreetshare.com-0002/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/api.discreetshare.com-0002/fullchain.pem'),
 };
 
 const server = https.createServer(options, app);
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
+    destination: (req, file, cb) => cb(null, '../data/uploads/'),
     filename: (req, file, cb) => {
         const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
         cb(null, `${file.fieldname}-${uniqueSuffix}`);
@@ -61,6 +61,7 @@ const BannedHash = mongoose.model('BannedHash', new mongoose.Schema({
 const fileSchema = new mongoose.Schema({
     originalName: String,
     encryptedFileName: String,
+    fileSize: String,
     extension: String,
     encryptionKey: String,
     iv: String,
@@ -114,7 +115,7 @@ app.get('/download/:fileId', async (req, res) => {
             return res.status(404).json({ error: 'File not found' });
         }
 
-        const filePath = path.join(__dirname, 'uploads', file.encryptedFileName);
+        const filePath = path.join(__dirname, '../data/uploads', file.encryptedFileName);
 
         // Initialize decryption stream
         const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(file.encryptionKey, 'hex'), Buffer.from(file.iv, 'hex'));
@@ -161,7 +162,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 			return res.status(403).json({ error: 'Uploads are under maintenance please come back later we are sorry for the upload downtime!', status: 'ud-403' });
 		}
         if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+            return res.status(400).json({ error: 'No file uploaded', status: 'fa-400' });
         }
         const fileStream = fs.readFileSync(req.file.path); // Read the file from disk
         const fileHash = calculateFileHash(fileStream);
@@ -169,7 +170,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         const isBanned = await BannedHash.findOne({ hash: fileHash });
         if (isBanned) {
             fs.unlinkSync(req.file.path); // Ensure file is deleted if banned
-            return res.status(410).json({ error: 'This file is banned', status: 'hb-410' });
+            return res.status(410).json({ error: 'This file is banned', status: 'fb-410' });
         }
 
         const existingFile = await File.findOne({ fileHash });
@@ -178,7 +179,17 @@ app.post('/upload', upload.single('file'), async (req, res) => {
             const downloadLink = `https://api.discreetshare.com/download/${existingFile._id}`;
             return res.status(200).json({ message: 'File already exists', downloadLink, status: 'true' });
         }
-
+ // Read file size and format it appropriately
+        const stats = fs.statSync(req.file.path);
+        const fileSizeInBytes = stats.size;
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let fileSize = fileSizeInBytes;
+        let unitIndex = 0;
+        while (fileSize >= 1024 && unitIndex < units.length - 1) {
+            fileSize /= 1024;
+            unitIndex++;
+        }
+        const formattedFileSize = `${fileSize.toFixed(2)}${units[unitIndex]}`;
         const { encrypted, encryptionKey, iv } = encryptAndCompress(fileStream);
         const randomFileName = crypto.randomBytes(8).toString('hex') + '.enc';
         const originalExtension = path.extname(req.file.originalname);
@@ -186,13 +197,14 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         const file = new File({
             originalName: req.file.originalname,
             encryptedFileName: randomFileName,
+            fileSize: formattedFileSize,
             extension: originalExtension,
             encryptionKey,
             iv,
             fileHash,
         });
 
-        const uploadFilePath = path.join(__dirname, 'uploads', randomFileName);
+        const uploadFilePath = path.join(__dirname, '../data/uploads', randomFileName);
         fs.writeFileSync(uploadFilePath, encrypted);
 
         fs.unlinkSync(req.file.path); // Delete the original file after encryption
@@ -227,7 +239,7 @@ app.get('/info/:fileId', async (req, res) => {
         const fileInfo = {
             originalName: file.originalName,
             extension: file.extension,
-            fileSize: file.encryptedFileName ? fs.statSync(path.join(__dirname, 'uploads', file.encryptedFileName)).size : 0, // Check if the file exists and get its size
+            fileSize: file.encryptedFileName ? fs.statSync(path.join(__dirname, '../data/uploads', file.encryptedFileName)).size : 0, // Check if the file exists and get its size
         };
 
         res.status(200).json({ fileInfo });
