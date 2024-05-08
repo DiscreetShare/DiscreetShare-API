@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 const https = require('https');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
-mongoose.connect(mongodbhere, {
+mongoose.connect('mongodb', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -73,7 +73,7 @@ app.get('/:fileId', async (req, res) => {
 
         
         // Construct the path to the encrypted file on disk
-        const filePath = path.join(__dirname, 'uploads', file.encryptedFileName);
+        const filePath = path.join(__dirname, '../data/uploads', file.encryptedFileName);
 
         // Check if the file exists on disk
         if (!fs.existsSync(filePath)) {
@@ -112,6 +112,7 @@ app.get('/:fileId', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+
 
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
