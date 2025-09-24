@@ -69,8 +69,8 @@ export default function uploadRoute(app: any) {
           filename,
           status: 'duplicate',
           id: (duplicate.fileId as ObjectId).toHexString(),
-          originalSize: formatBytes(duplicate.originalSize), // ✅ formatted
-          storedSize: formatBytes(duplicate.storedSize),     // ✅ formatted
+          originalSize: formatBytes(duplicate.originalSize), // ? formatted
+          storedSize: formatBytes(duplicate.storedSize),     // ? formatted
           contentType: duplicate.contentType,
           fileHash: fileHashHex
         });
@@ -134,8 +134,8 @@ export default function uploadRoute(app: any) {
         id: fileId.toHexString(),
         filename,
         status: 'done',
-        originalSize: formatBytes(originalSize), // ✅ formatted
-        storedSize: formatBytes(storedSize),     // ✅ formatted
+        originalSize: formatBytes(originalSize), // ? formatted
+        storedSize: formatBytes(storedSize),     // ? formatted
         contentType: contentTypeHeader,
         fileHash: fileHashHex
       });
