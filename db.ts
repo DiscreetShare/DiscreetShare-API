@@ -8,6 +8,7 @@ export async function initMongo() {
   const db = client.db(DB_NAME);
 
   const indexes = await db.collection('fileMeta').indexes();
+
   if (!indexes.some(i => i.name === 'fileHash_partial_unique')) {
     await db.collection('fileMeta').createIndex(
       { fileHash: 1 },
@@ -18,9 +19,11 @@ export async function initMongo() {
       }
     );
   }
+
   if (!indexes.some(i => i.name === 'fileId_1')) {
     await db.collection('fileMeta').createIndex({ fileId: 1 }, { unique: true });
   }
+
   const bannedIndexes = await db.collection('bannedHashes').indexes();
   if (!bannedIndexes.some(i => i.name === 'hash_1')) {
     await db.collection('bannedHashes').createIndex({ hash: 1 }, { unique: true });
