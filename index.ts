@@ -9,6 +9,7 @@ import downloadRoute from './routes/download';
 import infoRoute from './routes/info';
 import banHashRoute from './routes/banHash';
 import healthRoute from './routes/health';
+import cdnRoute from './routes/cdn';
 
 const app = new Hono();
 app.use('*', cors());
@@ -25,6 +26,6 @@ downloadRoute(app);
 infoRoute(app);
 banHashRoute(app);
 healthRoute(app);
-
+cdnRoute(app);
 serve({ fetch: app.fetch, port: PORT });
 console.log(`Discreetshare API listening on port ${PORT}`);
