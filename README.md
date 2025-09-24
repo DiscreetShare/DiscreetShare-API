@@ -1,5 +1,3 @@
-Here’s a polished `README.md` you can drop into your repo. It explains what the project is, how to run it, and what each route does. I’ve written it in a way that’s clear for contributors and users alike:
-
 ---
 
 # Discreetshare API
